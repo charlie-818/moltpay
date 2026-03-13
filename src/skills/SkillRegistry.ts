@@ -278,6 +278,9 @@ export class SkillRegistry {
     if (query.limit) {
       sql += ' LIMIT @limit';
       params.limit = query.limit;
+    } else if (query.offset) {
+      // SQLite requires LIMIT before OFFSET, use -1 for unlimited
+      sql += ' LIMIT -1';
     }
 
     if (query.offset) {

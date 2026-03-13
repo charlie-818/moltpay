@@ -1,13 +1,16 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { Connection, Keypair, PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js';
 import { TransactionBuilder } from '../src/transaction/TransactionBuilder';
 import { TransactionSender } from '../src/transaction/TransactionSender';
 import { ConfirmationWatcher } from '../src/transaction/ConfirmationWatcher';
 
+// Valid base58 blockhash for testing (32 bytes encoded)
+const VALID_BLOCKHASH = 'EkSnNWid2cvwEVnVx9aBqawnmiCNiDgp3gUdkDPTKN1N';
+
 // Mock connection for unit tests
 const mockConnection = {
   getLatestBlockhash: vi.fn().mockResolvedValue({
-    blockhash: 'mock-blockhash',
+    blockhash: VALID_BLOCKHASH,
     lastValidBlockHeight: 1000,
   }),
   getBalance: vi.fn().mockResolvedValue(10 * LAMPORTS_PER_SOL),

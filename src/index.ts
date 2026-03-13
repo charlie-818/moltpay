@@ -8,18 +8,57 @@ export * from './security';
 export * from './mcp';
 export * from './payments';
 
-// MoltPay SDK - Core Types
-export * from './types.js';
+// MoltPay SDK - Core Types (excluding duplicates)
+export type {
+  WalletConfig,
+  WalletInfo,
+  HDWalletConfig,
+  HDWalletInfo,
+  Balance,
+  TokenBalance,
+  SupportedToken,
+  SendOptions,
+  TransactionResult,
+  TransactionDetails,
+  VerifyPaymentOptions,
+  PaymentReceipt,
+  TransactionHistoryOptions,
+  RateLimitConfig,
+  RateLimitStatus,
+  FraudDetectionConfig,
+  FraudCheckResult,
+  MoltPayConfig,
+  AgentPaymentRequest,
+  AgentPaymentResponse,
+} from './types.js';
+export { TOKEN_MINTS, DEVNET_TOKEN_MINTS } from './types.js';
 
-// MoltPay SDK - Transaction Module
-export * from './transaction/index.js';
+// MoltPay SDK - Transaction Module (excluding TransactionResult to avoid duplicate)
+export {
+  TransactionBuilder,
+  TransactionSender,
+  ConfirmationWatcher,
+} from './transaction/index.js';
 
-// MoltPay SDK - Receipt Module
-export * from './receipt/index.js';
+// MoltPay SDK - Receipt Module (excluding PaymentReceipt to avoid duplicate)
+export {
+  PaymentVerifier,
+  ReceiptGenerator,
+  TransactionHistory,
+} from './receipt/index.js';
 
 // MoltPay SDK - Agent Adapters
 export { MoltPaySkill, createMoltPaySkill } from './adapters/openclaw/index.js';
 export { MoltPayTool, createMoltPayTool, MOLTPAY_TOOL_SCHEMAS } from './adapters/langchain/index.js';
+export { CrewAITool, createCrewAITool, CREWAI_TOOL_SCHEMAS } from './adapters/crewai/index.js';
+
+// MoltPay SDK - REST API
+export {
+  createApiServer,
+  startApiServer,
+  createAndStartApiServer,
+  ApiError,
+} from './adapters/api/index.js';
 
 import { AgentTransactionAPI, AgentConfig } from './agent';
 import { SkillManager, SkillManagerConfig } from './skills';

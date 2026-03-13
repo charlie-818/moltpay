@@ -231,26 +231,144 @@ processPayment();
 ### LangChain Integration
 
 ```typescript
-import { MoltPayTool } from 'moltpay/langchain';
+import { createMoltPayTool, MOLTPAY_TOOL_SCHEMAS } from 'moltpay';
 
-const paymentTool = new MoltPayTool({
+const moltpay = createMoltPayTool({
   encryptionKey: process.env.MOLTPAY_ENCRYPTION_KEY,
+  network: 'devnet',
 });
 
-// Use with LangChain agent
-const tools = [paymentTool];
+// Create wallet
+const result = await moltpay.createWallet();
+console.log('Wallet:', result.publicKey);
+
+// Send payment
+const payment = await moltpay.sendPayment({
+  to: 'recipient-public-key',
+  amount: 0.1,
+  token: 'SOL',
+});
 ```
 
-### MCP Server
+### CrewAI Integration
 
 ```typescript
-import { MoltPayMcpServer } from 'moltpay/mcp';
+import { createCrewAITool, CREWAI_TOOL_SCHEMAS } from 'moltpay';
 
-const server = new MoltPayMcpServer({
+const moltpay = createCrewAITool({
   encryptionKey: process.env.MOLTPAY_ENCRYPTION_KEY,
+  network: 'devnet',
 });
 
-server.start();
+// All outputs are JSON strings for Python compatibility
+const walletJson = await moltpay.createWallet();
+const wallet = JSON.parse(walletJson);
+
+// Get tool functions for CrewAI
+const tools = moltpay.getToolFunctions();
+const balanceJson = await tools.moltpay_get_balance(
+  JSON.stringify({ publicKey: wallet.data.publicKey })
+);
+```
+
+**Python CrewAI Example:**
+
+```python
+from crewai_tools import Tool
+import subprocess
+import json
+
+def moltpay_create_wallet():
+    result = subprocess.run(
+        ['npx', 'moltpay', 'create-wallet'],
+        capture_output=True,
+        text=True
+    )
+    return json.loads(result.stdout)
+
+wallet_tool = Tool(
+    name="moltpay_create_wallet",
+    description="Create a new Solana wallet",
+    func=moltpay_create_wallet
+)
+```
+
+### REST API Server
+
+```typescript
+import { createApiServer, startApiServer } from 'moltpay';
+
+const app = createApiServer({
+  encryptionKey: process.env.MOLTPAY_ENCRYPTION_KEY,
+  network: 'devnet',
+  apiKey: process.env.API_KEY,
+  port: 3000,
+});
+
+startApiServer(app, 3000);
+```
+
+**API Endpoints:**
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/api/wallet` | Create a new wallet |
+| `GET` | `/api/wallet/:address/balance` | Get wallet balance |
+| `POST` | `/api/transaction/send` | Send SOL or tokens |
+| `POST` | `/api/transaction/verify` | Verify a payment |
+| `POST` | `/api/airdrop` | Request airdrop (devnet) |
+| `GET` | `/api/history/:address` | Get transaction history |
+
+**Example API Request:**
+
+```bash
+# Create a wallet
+curl -X POST http://localhost:3000/api/wallet \
+  -H "Authorization: Bearer your-api-key" \
+  -H "Content-Type: application/json"
+
+# Send payment
+curl -X POST http://localhost:3000/api/transaction/send \
+  -H "Authorization: Bearer your-api-key" \
+  -H "Content-Type: application/json" \
+  -d '{"to": "recipient-address", "amount": 0.1, "token": "SOL"}'
+```
+
+### OpenClaw Integration
+
+```typescript
+import { createMoltPaySkill } from 'moltpay';
+
+const skill = createMoltPaySkill({
+  encryption_key: process.env.MOLTPAY_ENCRYPTION_KEY,
+  network: 'devnet',
+});
+
+// Execute actions
+const result = await skill.execute({
+  action: 'create_wallet',
+  params: {},
+});
+```
+
+### MCP Integration
+
+```typescript
+import { createMcpManager } from 'moltpay';
+
+const mcpManager = createMcpManager();
+
+mcpManager.addServer({
+  id: 'payment-tools',
+  name: 'Payment Tools',
+  transport: 'stdio',
+  command: 'node',
+  args: ['mcp-server.js'],
+  trustLevel: 'verified',
+});
+
+const client = await mcpManager.connect('payment-tools');
+const result = await client.callTool('send_payment', { to: '...', amount: 1 });
 ```
 
 ## Security
@@ -268,6 +386,47 @@ server.start();
 3. Implement proper error handling to avoid leaking sensitive data
 4. Regularly rotate encryption keys
 5. Use hardware wallets for high-value accounts
+
+## Project Structure
+
+```
+moltpay/
+├── src/
+│   ├── wallet/           # Wallet management
+│   ├── transaction/      # Transaction building & sending
+│   ├── receipt/          # Payment verification & receipts
+│   ├── security/         # Rate limiting, fraud detection
+│   ├── skills/           # Skills system
+│   ├── mcp/              # MCP client integration
+│   ├── payments/         # Payment & license management
+│   ├── adapters/
+│   │   ├── langchain/    # LangChain adapter
+│   │   ├── openclaw/     # OpenClaw adapter
+│   │   ├── crewai/       # CrewAI adapter
+│   │   └── api/          # REST API adapter
+│   └── ui/               # React components
+├── tests/                # Test files
+└── examples/             # Usage examples
+```
+
+## Development
+
+```bash
+# Install dependencies
+npm install
+
+# Run tests
+npm test
+
+# Run with coverage
+npm run test:coverage
+
+# Build
+npm run build
+
+# Run in development
+npm run dev
+```
 
 ## License
 

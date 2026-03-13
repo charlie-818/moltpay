@@ -433,28 +433,31 @@ export class MoltPayTool {
   /**
    * Creates tool functions compatible with LangChain
    */
-  getToolFunctions(): Record<string, (...args: unknown[]) => Promise<unknown>> {
+  getToolFunctions(): Record<string, (params: unknown) => Promise<unknown>> {
     return {
       moltpay_create_wallet: () => this.createWallet(),
-      moltpay_get_balance: (params: { publicKey: string; tokens?: string[] }) =>
-        this.getBalance(params),
-      moltpay_send_payment: (params: {
-        to: string;
-        amount: number;
-        token?: string;
-        memo?: string;
-      }) => this.sendPayment(params),
-      moltpay_verify_payment: (params: {
-        signature: string;
-        expectedRecipient?: string;
-        expectedAmount?: number;
-        expectedToken?: string;
-      }) => this.verifyPayment(params),
-      moltpay_get_history: (params: {
-        publicKey: string;
-        limit?: number;
-        direction?: 'sent' | 'received' | 'all';
-      }) => this.getTransactionHistory(params),
+      moltpay_get_balance: (params: unknown) =>
+        this.getBalance(params as { publicKey: string; tokens?: string[] }),
+      moltpay_send_payment: (params: unknown) =>
+        this.sendPayment(params as {
+          to: string;
+          amount: number;
+          token?: string;
+          memo?: string;
+        }),
+      moltpay_verify_payment: (params: unknown) =>
+        this.verifyPayment(params as {
+          signature: string;
+          expectedRecipient?: string;
+          expectedAmount?: number;
+          expectedToken?: string;
+        }),
+      moltpay_get_history: (params: unknown) =>
+        this.getTransactionHistory(params as {
+          publicKey: string;
+          limit?: number;
+          direction?: 'sent' | 'received' | 'all';
+        }),
     };
   }
 }

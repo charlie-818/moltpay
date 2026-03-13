@@ -22,6 +22,7 @@ import { SkillValidator } from './SkillValidator';
 
 export interface SkillManagerConfig {
   dbPath?: string;
+  inMemory?: boolean;
   skillDirectories?: string[];
   autoWatchDirectories?: boolean;
   defaultAutonomyTier?: AutonomyTier;
@@ -56,7 +57,7 @@ export class SkillManager extends EventEmitter {
   constructor(config: SkillManagerConfig = {}) {
     super();
     this.config = config;
-    this.registry = new SkillRegistry({ dbPath: config.dbPath });
+    this.registry = new SkillRegistry({ dbPath: config.dbPath, inMemory: config.inMemory });
     this.loader = new SkillLoader();
     this.validator = new SkillValidator();
 

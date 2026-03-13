@@ -1,9 +1,13 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { Connection, PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js';
+import { Connection, PublicKey, LAMPORTS_PER_SOL, Keypair, SystemProgram } from '@solana/web3.js';
 import { PaymentVerifier } from '../src/receipt/PaymentVerifier';
 import { ReceiptGenerator } from '../src/receipt/ReceiptGenerator';
 import { TransactionHistory } from '../src/receipt/TransactionHistory';
 import type { TransactionResult, PaymentReceipt } from '../src/types';
+
+// Generate valid keypairs for testing
+const senderKeypair = Keypair.generate();
+const recipientKeypair = Keypair.generate();
 
 // Mock parsed transaction
 const mockParsedTransaction = {
@@ -22,16 +26,16 @@ const mockParsedTransaction = {
           parsed: {
             type: 'transfer',
             info: {
-              source: 'sender-public-key',
-              destination: 'recipient-public-key',
+              source: senderKeypair.publicKey.toBase58(),
+              destination: recipientKeypair.publicKey.toBase58(),
               lamports: 1.5 * LAMPORTS_PER_SOL,
             },
           },
         },
       ],
       accountKeys: [
-        { pubkey: new PublicKey('11111111111111111111111111111111') },
-        { pubkey: new PublicKey('22222222222222222222222222222222') },
+        { pubkey: SystemProgram.programId },
+        { pubkey: recipientKeypair.publicKey },
       ],
     },
   },
@@ -270,7 +274,7 @@ describe('TransactionHistory', () => {
 
   describe('getHistory', () => {
     it('should fetch transaction history', async () => {
-      const txs = await history.getHistory('test-public-key', { limit: 10 });
+      const txs = await history.getHistory(senderKeypair.publicKey, { limit: 10 });
 
       expect(Array.isArray(txs)).toBe(true);
     });
@@ -278,7 +282,7 @@ describe('TransactionHistory', () => {
 
   describe('countTransactions', () => {
     it('should count transactions', async () => {
-      const count = await history.countTransactions('test-public-key');
+      const count = await history.countTransactions(senderKeypair.publicKey);
 
       expect(count).toBe(2); // From mock
     });
