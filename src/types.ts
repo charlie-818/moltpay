@@ -1,319 +1,266 @@
-import { PublicKey, Commitment, TransactionSignature } from '@solana/web3.js';
+import { PublicKey, Keypair, TransactionSignature, Commitment } from '@solana/web3.js';
 
-// ============================================================================
+// ============================================================
 // Wallet Types
-// ============================================================================
+// ============================================================
 
 export interface WalletConfig {
-  encryption?: EncryptionConfig;
-  network?: NetworkConfig;
+  /** Encryption key for securing private keys at rest */
+  encryptionKey?: string;
+  /** RPC endpoint URL (defaults to devnet) */
+  rpcEndpoint?: string;
 }
 
-export interface EncryptionConfig {
-  key: string;
-  algorithm?: 'aes-256-cbc' | 'aes-256-gcm';
-}
-
-export interface NetworkConfig {
-  endpoint: string;
-  commitment?: Commitment;
-}
-
-export interface MoltWallet {
+export interface WalletInfo {
+  /** Base58-encoded public key */
   publicKey: string;
+  /** Encrypted private key (base64) */
   encryptedPrivateKey: string;
+  /** Initialization vector for decryption (base64) */
+  iv: string;
+  /** Creation timestamp */
   createdAt: number;
 }
 
-export interface WalletBalance {
+export interface HDWalletConfig extends WalletConfig {
+  /** BIP39 mnemonic phrase (12 or 24 words) */
+  mnemonic?: string;
+  /** Derivation path (defaults to m/44'/501'/0'/0') */
+  derivationPath?: string;
+  /** Account index for derivation */
+  accountIndex?: number;
+}
+
+export interface HDWalletInfo extends WalletInfo {
+  /** Derivation path used */
+  derivationPath: string;
+  /** Account index */
+  accountIndex: number;
+}
+
+export interface Balance {
+  /** SOL balance in lamports */
+  lamports: bigint;
+  /** SOL balance as decimal */
   sol: number;
+  /** SPL token balances */
   tokens: TokenBalance[];
 }
 
 export interface TokenBalance {
+  /** Token mint address */
   mint: string;
+  /** Token symbol (if known) */
   symbol?: string;
-  balance: number;
+  /** Balance in smallest units */
+  amount: bigint;
+  /** Decimals for the token */
   decimals: number;
+  /** Human-readable balance */
+  uiAmount: number;
 }
 
-export interface HDWalletConfig extends WalletConfig {
-  mnemonic?: string;
-  derivationPath?: string;
-}
-
-export interface HDWallet extends MoltWallet {
-  mnemonic: string;
-  derivationPath: string;
-  index: number;
-}
-
-// ============================================================================
+// ============================================================
 // Transaction Types
-// ============================================================================
+// ============================================================
 
-export interface SendTransactionParams {
-  from: MoltWallet;
-  to: string;
+export type SupportedToken = 'SOL' | 'USDC' | 'USDT';
+
+export interface SendOptions {
+  /** Sender wallet info or decrypted keypair */
+  from: WalletInfo | Keypair;
+  /** Recipient public key (base58 string or PublicKey) */
+  to: string | PublicKey;
+  /** Amount to send (in token units, e.g., 1.5 SOL) */
   amount: number;
-  token?: string; // 'SOL' or SPL token mint address
+  /** Token to send (SOL, USDC, USDT, or mint address) */
+  token?: SupportedToken | string;
+  /** Confirmation level to wait for */
   confirmation?: Commitment;
+  /** Memo to attach to transaction */
   memo?: string;
+  /** Encryption key to decrypt wallet (if using WalletInfo) */
+  encryptionKey?: string;
 }
 
 export interface TransactionResult {
+  /** Transaction signature */
   signature: TransactionSignature;
-  status: TransactionStatus;
-  timestamp: number;
+  /** Transaction status */
+  status: 'confirmed' | 'finalized' | 'failed';
+  /** Block time (Unix timestamp) */
+  timestamp?: number;
+  /** Slot number */
   slot?: number;
+  /** Fee paid in lamports */
   fee?: number;
+  /** Error message if failed */
   error?: string;
 }
 
-export type TransactionStatus = 
-  | 'pending'
-  | 'confirmed'
-  | 'finalized'
-  | 'failed';
-
 export interface TransactionDetails {
+  /** Transaction signature */
   signature: string;
-  blockTime: number | null;
-  slot: number;
-  fee: number;
-  status: TransactionStatus;
+  /** Sender public key */
   from: string;
+  /** Recipient public key */
   to: string;
+  /** Amount transferred */
   amount: number;
+  /** Token transferred */
   token: string;
-  memo?: string;
+  /** Block time */
+  timestamp: number;
+  /** Slot number */
+  slot: number;
+  /** Fee paid */
+  fee: number;
+  /** Transaction status */
+  status: 'success' | 'failed';
 }
 
-export interface FeeEstimate {
-  lamports: number;
-  sol: number;
-}
+// ============================================================
+// Receipt/Verification Types
+// ============================================================
 
-// ============================================================================
-// Receipt & Verification Types
-// ============================================================================
-
-export interface VerifyPaymentParams {
+export interface VerifyPaymentOptions {
+  /** Transaction signature to verify */
   signature: string;
-  expectedRecipient: string;
-  expectedAmount: number;
-  expectedToken?: string; // 'SOL' or SPL token mint address
-  tolerance?: number; // Percentage tolerance for amount (default 0)
+  /** Expected recipient address */
+  expectedRecipient?: string;
+  /** Expected amount (with tolerance) */
+  expectedAmount?: number;
+  /** Expected token */
+  expectedToken?: SupportedToken | string;
+  /** Amount tolerance (percentage, default 0.01 = 1%) */
+  tolerance?: number;
 }
 
 export interface PaymentReceipt {
+  /** Whether the payment is verified */
   verified: boolean;
+  /** Transaction signature */
   signature: string;
+  /** Sender address */
+  from: string;
+  /** Recipient address */
+  to: string;
+  /** Amount transferred */
+  amount: number;
+  /** Token transferred */
+  token: string;
+  /** Block time (Unix timestamp) */
   timestamp: number;
-  sender: string;
-  recipient: string;
-  amount: number;
-  token: string;
-  blockTime: number | null;
+  /** Slot number */
   slot: number;
-  confirmations: number;
-  error?: string;
+  /** Verification failures (if any) */
+  failures?: string[];
+  /** Unique receipt ID */
+  receiptId: string;
 }
 
-export interface TransactionHistoryParams {
-  publicKey: string;
+export interface TransactionHistoryOptions {
+  /** Maximum number of transactions to return */
   limit?: number;
+  /** Pagination cursor (signature to start before) */
   before?: string;
-  until?: string;
+  /** Filter by token */
+  token?: SupportedToken | string;
+  /** Filter by direction */
+  direction?: 'sent' | 'received' | 'all';
 }
 
-export interface TransactionHistoryEntry {
-  signature: string;
-  blockTime: number | null;
-  slot: number;
-  status: TransactionStatus;
-  type: 'sent' | 'received';
-  counterparty: string;
-  amount: number;
-  token: string;
-}
-
-// ============================================================================
+// ============================================================
 // Security Types
-// ============================================================================
+// ============================================================
 
 export interface RateLimitConfig {
-  maxTransactionsPerMinute: number;
-  maxTransactionsPerHour: number;
-  maxAmountPerTransaction: number;
-  maxAmountPerDay: number;
+  /** Maximum transactions per window */
+  maxTransactions: number;
+  /** Time window in milliseconds */
+  windowMs: number;
 }
 
-export interface RateLimitState {
-  transactionsLastMinute: number;
-  transactionsLastHour: number;
-  amountToday: number;
-  lastReset: number;
+export interface RateLimitStatus {
+  /** Number of transactions remaining */
+  remaining: number;
+  /** Reset time (Unix timestamp) */
+  resetAt: number;
+  /** Whether limit is exceeded */
+  exceeded: boolean;
 }
 
 export interface FraudDetectionConfig {
-  enabled: boolean;
-  maxDeviationMultiplier: number; // Flag if amount > (avg * multiplier)
-  minTransactionsForBaseline: number;
+  /** Maximum single transaction amount (in SOL) */
+  maxTransactionAmount: number;
+  /** Maximum daily transaction volume (in SOL) */
+  maxDailyVolume: number;
+  /** Minimum time between transactions (ms) */
+  minTransactionInterval: number;
+  /** Enable anomaly detection */
+  anomalyDetection: boolean;
 }
 
-export interface FraudAlert {
-  type: 'high_amount' | 'rapid_transactions' | 'unusual_recipient' | 'duplicate_payment';
-  severity: 'low' | 'medium' | 'high';
-  message: string;
-  timestamp: number;
-  transactionDetails?: Partial<TransactionDetails>;
+export interface FraudCheckResult {
+  /** Whether the transaction is allowed */
+  allowed: boolean;
+  /** Risk score (0-100) */
+  riskScore: number;
+  /** Reasons for flagging (if any) */
+  flags: string[];
 }
 
-// ============================================================================
-// Token Whitelist Types
-// ============================================================================
-
-export interface TokenInfo {
-  mint: string;
-  symbol: string;
-  name: string;
-  decimals: number;
-}
-
-export const WHITELISTED_TOKENS: Record<string, TokenInfo> = {
-  SOL: {
-    mint: 'So11111111111111111111111111111111111111112',
-    symbol: 'SOL',
-    name: 'Solana',
-    decimals: 9,
-  },
-  USDC: {
-    mint: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
-    symbol: 'USDC',
-    name: 'USD Coin',
-    decimals: 6,
-  },
-  USDT: {
-    mint: 'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB',
-    symbol: 'USDT',
-    name: 'Tether USD',
-    decimals: 6,
-  },
-};
-
-// Devnet token addresses
-export const DEVNET_TOKENS: Record<string, TokenInfo> = {
-  SOL: {
-    mint: 'So11111111111111111111111111111111111111112',
-    symbol: 'SOL',
-    name: 'Solana',
-    decimals: 9,
-  },
-  USDC: {
-    mint: '4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU',
-    symbol: 'USDC',
-    name: 'USD Coin (Devnet)',
-    decimals: 6,
-  },
-};
-
-// ============================================================================
-// SDK Configuration Types
-// ============================================================================
+// ============================================================
+// SDK Configuration
+// ============================================================
 
 export interface MoltPayConfig {
-  network: 'devnet' | 'mainnet-beta' | 'testnet';
+  /** Solana RPC endpoint */
   rpcEndpoint?: string;
+  /** Default commitment level */
   commitment?: Commitment;
+  /** Encryption key for wallet storage */
   encryptionKey?: string;
-  rateLimits?: Partial<RateLimitConfig>;
-  fraudDetection?: Partial<FraudDetectionConfig>;
+  /** Rate limiting configuration */
+  rateLimit?: RateLimitConfig;
+  /** Fraud detection configuration */
+  fraudDetection?: FraudDetectionConfig;
+  /** Whitelisted token mints (in addition to SOL, USDC, USDT) */
+  tokenWhitelist?: string[];
 }
 
-export const DEFAULT_CONFIG: MoltPayConfig = {
-  network: 'devnet',
-  commitment: 'confirmed',
-  rateLimits: {
-    maxTransactionsPerMinute: 10,
-    maxTransactionsPerHour: 100,
-    maxAmountPerTransaction: 1000,
-    maxAmountPerDay: 10000,
-  },
-  fraudDetection: {
-    enabled: true,
-    maxDeviationMultiplier: 3,
-    minTransactionsForBaseline: 5,
-  },
+// ============================================================
+// Token Constants
+// ============================================================
+
+export const TOKEN_MINTS: Record<SupportedToken, string> = {
+  SOL: 'So11111111111111111111111111111111111111112',
+  USDC: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+  USDT: 'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB',
 };
 
-// ============================================================================
-// Adapter Types
-// ============================================================================
+export const DEVNET_TOKEN_MINTS: Record<SupportedToken, string> = {
+  SOL: 'So11111111111111111111111111111111111111112',
+  USDC: '4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU', // Devnet USDC
+  USDT: 'EJwZgeZrdC8TXTQbQBoL6bfuAnFUUy1PVCMB4DYPzVaS', // Devnet USDT
+};
 
-export interface OpenClawSkillInput {
+// ============================================================
+// Adapter Types
+// ============================================================
+
+export interface AgentPaymentRequest {
+  /** Action to perform */
   action: 'create_wallet' | 'send' | 'get_balance' | 'verify_payment' | 'get_history';
+  /** Action parameters */
   params: Record<string, unknown>;
 }
 
-export interface OpenClawSkillOutput {
+export interface AgentPaymentResponse {
+  /** Whether the action succeeded */
   success: boolean;
+  /** Result data */
   data?: unknown;
+  /** Error message if failed */
   error?: string;
-}
-
-export interface LangChainToolInput {
-  action: string;
-  [key: string]: unknown;
-}
-
-// ============================================================================
-// Error Types
-// ============================================================================
-
-export class MoltPayError extends Error {
-  constructor(
-    message: string,
-    public code: string,
-    public details?: Record<string, unknown>
-  ) {
-    super(message);
-    this.name = 'MoltPayError';
-  }
-}
-
-export class WalletError extends MoltPayError {
-  constructor(message: string, details?: Record<string, unknown>) {
-    super(message, 'WALLET_ERROR', details);
-    this.name = 'WalletError';
-  }
-}
-
-export class TransactionError extends MoltPayError {
-  constructor(message: string, details?: Record<string, unknown>) {
-    super(message, 'TRANSACTION_ERROR', details);
-    this.name = 'TransactionError';
-  }
-}
-
-export class VerificationError extends MoltPayError {
-  constructor(message: string, details?: Record<string, unknown>) {
-    super(message, 'VERIFICATION_ERROR', details);
-    this.name = 'VerificationError';
-  }
-}
-
-export class SecurityError extends MoltPayError {
-  constructor(message: string, details?: Record<string, unknown>) {
-    super(message, 'SECURITY_ERROR', details);
-    this.name = 'SecurityError';
-  }
-}
-
-export class RateLimitError extends SecurityError {
-  constructor(message: string, details?: Record<string, unknown>) {
-    super(message, details);
-    this.name = 'RateLimitError';
-    this.code = 'RATE_LIMIT_ERROR';
-  }
 }

@@ -1,240 +1,345 @@
-import { 
-  Connection, 
-  Keypair, 
-  PublicKey, 
+import {
+  Connection,
+  Keypair,
+  PublicKey,
   LAMPORTS_PER_SOL,
-  clusterApiUrl 
+  clusterApiUrl,
 } from '@solana/web3.js';
 import { getAccount, getAssociatedTokenAddress, getMint } from '@solana/spl-token';
-import { 
-  MoltWallet, 
-  HDWallet, 
-  WalletConfig, 
+import type {
+  WalletConfig,
+  WalletInfo,
   HDWalletConfig,
-  WalletBalance,
+  HDWalletInfo,
+  Balance,
   TokenBalance,
-  WalletError,
-  MoltPayConfig,
-  DEVNET_TOKENS,
-  WHITELISTED_TOKENS
-} from '../types';
-import { KeyStore } from './KeyStore';
-import { HDDerivation } from './HDDerivation';
+  DEVNET_TOKEN_MINTS,
+  SupportedToken,
+} from '../types.js';
+import {
+  generateMnemonic,
+  validateMnemonic,
+  keypairFromMnemonic,
+  deriveMultipleKeypairs,
+  getDerivationPath,
+} from './HDDerivation.js';
+import {
+  createWalletInfo,
+  createHDWalletInfo,
+  decryptKeypair,
+  importSecretKey,
+  importSecretKeyArray,
+} from './KeyStore.js';
 
+const DEFAULT_RPC_ENDPOINT = clusterApiUrl('devnet');
+
+// Known token symbols for display
+const TOKEN_SYMBOLS: Record<string, string> = {
+  'So11111111111111111111111111111111111111112': 'SOL',
+  'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v': 'USDC',
+  'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB': 'USDT',
+  '4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU': 'USDC', // Devnet
+  'EJwZgeZrdC8TXTQbQBoL6bfuAnFUUy1PVCMB4DYPzVaS': 'USDT', // Devnet
+};
+
+/**
+ * Wallet manager for creating, importing, and managing Solana wallets
+ */
 export class WalletManager {
   private connection: Connection;
-  private keyStore: KeyStore;
   private encryptionKey?: string;
 
-  constructor(config: MoltPayConfig) {
-    const endpoint = config.rpcEndpoint || clusterApiUrl(config.network);
-    this.connection = new Connection(endpoint, config.commitment || 'confirmed');
-    this.keyStore = new KeyStore();
+  constructor(config: WalletConfig = {}) {
+    this.connection = new Connection(
+      config.rpcEndpoint || DEFAULT_RPC_ENDPOINT,
+      'confirmed'
+    );
     this.encryptionKey = config.encryptionKey;
   }
 
   /**
-   * Create a new wallet with a randomly generated keypair
+   * Creates a new random wallet
+   *
+   * @param password - Optional password override (uses config encryptionKey if not provided)
+   * @returns Encrypted wallet info
    */
-  async createWallet(config?: WalletConfig): Promise<MoltWallet> {
+  createWallet(password?: string): WalletInfo & { salt: string } {
+    const pwd = password || this.encryptionKey;
+    if (!pwd) {
+      throw new Error('Encryption key required. Provide password or set encryptionKey in config.');
+    }
+
     const keypair = Keypair.generate();
-    const encryptionKey = config?.encryption?.key || this.encryptionKey;
-
-    if (!encryptionKey) {
-      throw new WalletError('Encryption key is required');
-    }
-
-    const encryptedPrivateKey = this.keyStore.encryptPrivateKey(
-      keypair.secretKey,
-      encryptionKey
-    );
-
-    return {
-      publicKey: keypair.publicKey.toBase58(),
-      encryptedPrivateKey,
-      createdAt: Date.now(),
-    };
+    return createWalletInfo(keypair, pwd);
   }
 
   /**
-   * Create an HD wallet from a mnemonic phrase
+   * Creates a new HD wallet with mnemonic
+   *
+   * @param config - HD wallet configuration
+   * @returns HD wallet info with mnemonic
    */
-  async createHDWallet(config?: HDWalletConfig): Promise<HDWallet> {
-    const mnemonic = config?.mnemonic || HDDerivation.generateMnemonic();
-    const derivationPath = config?.derivationPath || HDDerivation.getDerivationPath(0);
-    const encryptionKey = config?.encryption?.key || this.encryptionKey;
-
-    if (!encryptionKey) {
-      throw new WalletError('Encryption key is required');
+  createHDWallet(config: HDWalletConfig = {}): {
+    wallet: HDWalletInfo & { salt: string };
+    mnemonic: string;
+  } {
+    const pwd = config.encryptionKey || this.encryptionKey;
+    if (!pwd) {
+      throw new Error('Encryption key required.');
     }
 
-    const keypair = HDDerivation.deriveKeypair(mnemonic, 0, derivationPath);
-    const encryptedPrivateKey = this.keyStore.encryptPrivateKey(
-      keypair.secretKey,
-      encryptionKey
-    );
+    const mnemonic = config.mnemonic || generateMnemonic();
+    const accountIndex = config.accountIndex ?? 0;
+    const derivationPath = config.derivationPath || getDerivationPath(accountIndex);
 
-    return {
-      publicKey: keypair.publicKey.toBase58(),
-      encryptedPrivateKey,
-      createdAt: Date.now(),
-      mnemonic, // Note: In production, encrypt the mnemonic too
-      derivationPath,
-      index: 0,
-    };
+    const keypair = keypairFromMnemonic(mnemonic, accountIndex);
+    const wallet = createHDWalletInfo(keypair, pwd, derivationPath, accountIndex);
+
+    return { wallet, mnemonic };
   }
 
   /**
-   * Derive additional wallets from an HD wallet
+   * Imports a wallet from mnemonic phrase
+   *
+   * @param mnemonic - BIP39 mnemonic phrase
+   * @param accountIndex - Account index to derive (default: 0)
+   * @param password - Optional password override
+   * @returns Encrypted wallet info
    */
-  async deriveWallet(
-    hdWallet: HDWallet,
-    index: number,
-    encryptionKey?: string
-  ): Promise<HDWallet> {
-    const key = encryptionKey || this.encryptionKey;
-    if (!key) {
-      throw new WalletError('Encryption key is required');
+  importFromMnemonic(
+    mnemonic: string,
+    accountIndex: number = 0,
+    password?: string
+  ): HDWalletInfo & { salt: string } {
+    const pwd = password || this.encryptionKey;
+    if (!pwd) {
+      throw new Error('Encryption key required.');
     }
 
-    const derivationPath = HDDerivation.getDerivationPath(index);
-    const keypair = HDDerivation.deriveKeypair(hdWallet.mnemonic, index);
-    const encryptedPrivateKey = this.keyStore.encryptPrivateKey(
-      keypair.secretKey,
-      key
-    );
+    if (!validateMnemonic(mnemonic)) {
+      throw new Error('Invalid mnemonic phrase');
+    }
 
-    return {
-      publicKey: keypair.publicKey.toBase58(),
-      encryptedPrivateKey,
-      createdAt: Date.now(),
-      mnemonic: hdWallet.mnemonic,
-      derivationPath,
-      index,
-    };
+    const derivationPath = getDerivationPath(accountIndex);
+    const keypair = keypairFromMnemonic(mnemonic, accountIndex);
+
+    return createHDWalletInfo(keypair, pwd, derivationPath, accountIndex);
   }
 
   /**
-   * Import a wallet from a private key (base58 encoded)
+   * Imports a wallet from base58-encoded secret key
+   *
+   * @param secretKeyBase58 - Base58-encoded secret key
+   * @param password - Optional password override
+   * @returns Encrypted wallet info
    */
-  async importWallet(
-    privateKeyBase58: string,
-    encryptionKey?: string
-  ): Promise<MoltWallet> {
-    const key = encryptionKey || this.encryptionKey;
-    if (!key) {
-      throw new WalletError('Encryption key is required');
+  importFromSecretKey(
+    secretKeyBase58: string,
+    password?: string
+  ): WalletInfo & { salt: string } {
+    const pwd = password || this.encryptionKey;
+    if (!pwd) {
+      throw new Error('Encryption key required.');
     }
 
-    try {
-      const { default: bs58 } = await import('bs58');
-      const privateKey = bs58.decode(privateKeyBase58);
-      const keypair = Keypair.fromSecretKey(privateKey);
-      
-      const encryptedPrivateKey = this.keyStore.encryptPrivateKey(
-        keypair.secretKey,
-        key
-      );
-
-      return {
-        publicKey: keypair.publicKey.toBase58(),
-        encryptedPrivateKey,
-        createdAt: Date.now(),
-      };
-    } catch (error) {
-      throw new WalletError('Invalid private key format', { error });
-    }
+    const keypair = importSecretKey(secretKeyBase58);
+    return createWalletInfo(keypair, pwd);
   }
 
   /**
-   * Get the keypair from an encrypted wallet
+   * Imports a wallet from secret key array (JSON format)
+   *
+   * @param secretKey - Secret key as number array
+   * @param password - Optional password override
+   * @returns Encrypted wallet info
    */
-  getKeypair(wallet: MoltWallet, encryptionKey?: string): Keypair {
-    const key = encryptionKey || this.encryptionKey;
-    if (!key) {
-      throw new WalletError('Encryption key is required');
+  importFromSecretKeyArray(
+    secretKey: number[],
+    password?: string
+  ): WalletInfo & { salt: string } {
+    const pwd = password || this.encryptionKey;
+    if (!pwd) {
+      throw new Error('Encryption key required.');
     }
 
-    return this.keyStore.restoreKeypair(wallet.encryptedPrivateKey, key);
+    const keypair = importSecretKeyArray(secretKey);
+    return createWalletInfo(keypair, pwd);
   }
 
   /**
-   * Get the SOL balance for a wallet
+   * Decrypts a wallet to get the keypair
+   *
+   * @param walletInfo - Encrypted wallet info
+   * @param password - Optional password override
+   * @returns Decrypted keypair
    */
-  async getBalance(publicKey: string): Promise<WalletBalance> {
-    const pubkey = new PublicKey(publicKey);
+  decryptWallet(walletInfo: WalletInfo, password?: string): Keypair {
+    const pwd = password || this.encryptionKey;
+    if (!pwd) {
+      throw new Error('Decryption password required.');
+    }
+
+    return decryptKeypair(walletInfo, pwd);
+  }
+
+  /**
+   * Derives multiple wallets from a mnemonic
+   *
+   * @param mnemonic - BIP39 mnemonic phrase
+   * @param count - Number of wallets to derive
+   * @param startIndex - Starting account index
+   * @param password - Optional password override
+   * @returns Array of encrypted wallet infos
+   */
+  deriveMultipleWallets(
+    mnemonic: string,
+    count: number,
+    startIndex: number = 0,
+    password?: string
+  ): (HDWalletInfo & { salt: string })[] {
+    const pwd = password || this.encryptionKey;
+    if (!pwd) {
+      throw new Error('Encryption key required.');
+    }
+
+    const keypairs = deriveMultipleKeypairs(mnemonic, count, startIndex);
+
+    return keypairs.map((keypair, i) => {
+      const accountIndex = startIndex + i;
+      const derivationPath = getDerivationPath(accountIndex);
+      return createHDWalletInfo(keypair, pwd, derivationPath, accountIndex);
+    });
+  }
+
+  /**
+   * Gets the SOL and token balance for a wallet
+   *
+   * @param publicKey - Wallet public key (string or PublicKey)
+   * @param tokenMints - Optional list of token mints to check
+   * @returns Balance information
+   */
+  async getBalance(
+    publicKey: string | PublicKey,
+    tokenMints: string[] = []
+  ): Promise<Balance> {
+    const pubkey = typeof publicKey === 'string'
+      ? new PublicKey(publicKey)
+      : publicKey;
+
+    // Get SOL balance
     const lamports = await this.connection.getBalance(pubkey);
     const sol = lamports / LAMPORTS_PER_SOL;
 
-    const tokens = await this.getTokenBalances(publicKey);
+    // Get token balances
+    const tokens: TokenBalance[] = [];
+
+    for (const mint of tokenMints) {
+      try {
+        const mintPubkey = new PublicKey(mint);
+        const ata = await getAssociatedTokenAddress(mintPubkey, pubkey);
+
+        try {
+          const account = await getAccount(this.connection, ata);
+          const mintInfo = await getMint(this.connection, mintPubkey);
+
+          tokens.push({
+            mint,
+            symbol: TOKEN_SYMBOLS[mint],
+            amount: account.amount,
+            decimals: mintInfo.decimals,
+            uiAmount: Number(account.amount) / Math.pow(10, mintInfo.decimals),
+          });
+        } catch {
+          // Token account doesn't exist, balance is 0
+          const mintInfo = await getMint(this.connection, mintPubkey);
+          tokens.push({
+            mint,
+            symbol: TOKEN_SYMBOLS[mint],
+            amount: BigInt(0),
+            decimals: mintInfo.decimals,
+            uiAmount: 0,
+          });
+        }
+      } catch (error) {
+        // Skip invalid mints
+        console.warn(`Failed to get balance for mint ${mint}:`, error);
+      }
+    }
 
     return {
+      lamports: BigInt(lamports),
       sol,
       tokens,
     };
   }
 
   /**
-   * Get SPL token balances for a wallet
+   * Checks if a wallet has sufficient balance
+   *
+   * @param publicKey - Wallet public key
+   * @param amount - Required amount in SOL
+   * @returns Whether the wallet has sufficient balance
    */
-  async getTokenBalances(publicKey: string): Promise<TokenBalance[]> {
-    const pubkey = new PublicKey(publicKey);
-    const tokenBalances: TokenBalance[] = [];
+  async hasSufficientBalance(
+    publicKey: string | PublicKey,
+    amount: number
+  ): Promise<boolean> {
+    const balance = await this.getBalance(publicKey);
+    return balance.sol >= amount;
+  }
 
-    const tokenAccounts = await this.connection.getParsedTokenAccountsByOwner(
-      pubkey,
-      { programId: new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA') }
-    );
-
-    for (const { account } of tokenAccounts.value) {
-      const parsedInfo = account.data.parsed.info;
-      const mintAddress = parsedInfo.mint;
-      const balance = parsedInfo.tokenAmount.uiAmount;
-      const decimals = parsedInfo.tokenAmount.decimals;
-
-      // Find symbol from whitelist
-      const tokenInfo = Object.values({ ...WHITELISTED_TOKENS, ...DEVNET_TOKENS })
-        .find(t => t.mint === mintAddress);
-
-      tokenBalances.push({
-        mint: mintAddress,
-        symbol: tokenInfo?.symbol,
-        balance: balance || 0,
-        decimals,
-      });
+  /**
+   * Requests an airdrop on devnet (for testing)
+   *
+   * @param publicKey - Wallet public key
+   * @param amount - Amount in SOL (max 2)
+   * @returns Airdrop transaction signature
+   */
+  async requestAirdrop(
+    publicKey: string | PublicKey,
+    amount: number = 1
+  ): Promise<string> {
+    if (amount > 2) {
+      throw new Error('Airdrop amount cannot exceed 2 SOL');
     }
 
-    return tokenBalances;
-  }
+    const pubkey = typeof publicKey === 'string'
+      ? new PublicKey(publicKey)
+      : publicKey;
 
-  /**
-   * Check if a wallet exists on-chain (has any transactions)
-   */
-  async walletExists(publicKey: string): Promise<boolean> {
-    const pubkey = new PublicKey(publicKey);
-    const accountInfo = await this.connection.getAccountInfo(pubkey);
-    return accountInfo !== null;
-  }
+    const signature = await this.connection.requestAirdrop(
+      pubkey,
+      amount * LAMPORTS_PER_SOL
+    );
 
-  /**
-   * Request an airdrop (devnet only)
-   */
-  async requestAirdrop(publicKey: string, amount: number = 1): Promise<string> {
-    const pubkey = new PublicKey(publicKey);
-    const lamports = amount * LAMPORTS_PER_SOL;
-    
-    const signature = await this.connection.requestAirdrop(pubkey, lamports);
+    // Wait for confirmation
     await this.connection.confirmTransaction(signature, 'confirmed');
-    
+
     return signature;
   }
 
   /**
-   * Get the connection instance for advanced operations
+   * Gets the connection instance
    */
   getConnection(): Connection {
     return this.connection;
   }
-}
 
-export default WalletManager;
+  /**
+   * Updates the RPC endpoint
+   *
+   * @param endpoint - New RPC endpoint URL
+   */
+  setRpcEndpoint(endpoint: string): void {
+    this.connection = new Connection(endpoint, 'confirmed');
+  }
+
+  /**
+   * Updates the encryption key
+   *
+   * @param key - New encryption key
+   */
+  setEncryptionKey(key: string): void {
+    this.encryptionKey = key;
+  }
+}
