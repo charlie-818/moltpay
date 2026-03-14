@@ -119,23 +119,76 @@ export class McpToolRegistry extends EventEmitter {
 
   /**
    * Convert MCP tool to skill format
+   * @param tool The MCP tool to convert
+   * @param serverIdOrConfig Either a server ID string or a full McpServerConfig object
    */
-  convertToSkill(tool: McpTool, serverConfig: McpServerConfig): McpToolAsSkill {
+  convertToSkill(tool: McpTool, serverIdOrConfig: string | McpServerConfig): McpToolAsSkill {
+    const serverId = typeof serverIdOrConfig === 'string'
+      ? serverIdOrConfig
+      : serverIdOrConfig.id;
+    const trustLevel = typeof serverIdOrConfig === 'string'
+      ? 'community' as TrustLevel
+      : serverIdOrConfig.trustLevel;
+
+    const toolName = tool.name || 'unnamed-tool';
+
     return {
-      id: `mcp:${serverConfig.id}:${tool.name}`,
-      name: tool.name,
-      description: tool.description || `MCP tool: ${tool.name}`,
+      id: `mcp:${serverId}:${toolName}`,
+      name: toolName,
+      description: tool.description || `MCP tool: ${toolName}`,
       version: '1.0.0',
       license: 'MCP',
-      tags: ['mcp', serverConfig.id],
+      source: 'mcp' as const,
+      tags: ['mcp', serverId],
       allowedTools: [],
       requiredTools: [],
       permissions: this.inferPermissions(tool),
-      trustLevel: serverConfig.trustLevel,
-      mcpServerId: serverConfig.id,
-      mcpToolName: tool.name,
+      trustLevel: trustLevel,
+      mcpServerId: serverId,
+      mcpToolName: toolName,
       inputSchema: tool.inputSchema,
     };
+  }
+
+  /**
+   * Cache tools for a server
+   */
+  cacheTools(serverId: string, tools: McpTool[]): void {
+    const serverConfig = this.clientManager.getServerConfig(serverId);
+    for (const tool of tools) {
+      const skillTool = this.convertToSkill(tool, serverConfig || serverId);
+      const cacheKey = this.getToolCacheKey(serverId, tool.name);
+      this.toolCache.set(cacheKey, skillTool);
+    }
+  }
+
+  /**
+   * Get cached tools for a server
+   */
+  getCachedTools(serverId: string): McpTool[] | undefined {
+    const tools = this.getToolsByServer(serverId);
+    if (tools.length === 0) return undefined;
+    return tools.map(skill => ({
+      name: skill.mcpToolName,
+      description: skill.description,
+      inputSchema: skill.inputSchema || {},
+      serverId: skill.mcpServerId,
+    }));
+  }
+
+  /**
+   * Clear cache (all or for a specific server)
+   */
+  clearCache(serverId?: string): void {
+    if (serverId) {
+      for (const [key, tool] of this.toolCache) {
+        if (tool.mcpServerId === serverId) {
+          this.toolCache.delete(key);
+        }
+      }
+    } else {
+      this.toolCache.clear();
+    }
   }
 
   /**
@@ -148,8 +201,8 @@ export class McpToolRegistry extends EventEmitter {
     permissions.add('network_connect');
 
     // Analyze tool name and schema for additional permissions
-    const toolNameLower = tool.name.toLowerCase();
-    const schemaStr = JSON.stringify(tool.inputSchema).toLowerCase();
+    const toolNameLower = (tool.name || '').toLowerCase();
+    const schemaStr = JSON.stringify(tool.inputSchema || {}).toLowerCase();
 
     // File-related tools
     if (
@@ -276,13 +329,6 @@ export class McpToolRegistry extends EventEmitter {
    */
   private getToolCacheKey(serverId: string, toolName: string): string {
     return `${serverId}:${toolName}`;
-  }
-
-  /**
-   * Clear tool cache
-   */
-  clearCache(): void {
-    this.toolCache.clear();
   }
 
   /**

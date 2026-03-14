@@ -371,6 +371,95 @@ const client = await mcpManager.connect('payment-tools');
 const result = await client.callTool('send_payment', { to: '...', amount: 1 });
 ```
 
+## MCP Server
+
+MoltPay includes a built-in MCP server that exposes Solana payment tools to MCP clients like Claude Desktop, Claude Code, and other compatible applications.
+
+### Quick Start
+
+```bash
+# Install and run directly
+npx moltpay-mcp
+
+# Or with environment variables
+MOLTPAY_ENCRYPTION_KEY=your-secret-key MOLTPAY_NETWORK=devnet npx moltpay-mcp
+```
+
+### Claude Desktop Configuration
+
+Add to your `claude_desktop_config.json`:
+
+**macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`
+**Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
+
+```json
+{
+  "mcpServers": {
+    "moltpay": {
+      "command": "npx",
+      "args": ["moltpay-mcp"],
+      "env": {
+        "MOLTPAY_ENCRYPTION_KEY": "your-32-byte-encryption-key",
+        "MOLTPAY_NETWORK": "devnet"
+      }
+    }
+  }
+}
+```
+
+### Claude Code Configuration
+
+Add to your `.claude/settings.json` or global settings:
+
+```json
+{
+  "mcpServers": {
+    "moltpay": {
+      "command": "npx",
+      "args": ["moltpay-mcp"],
+      "env": {
+        "MOLTPAY_ENCRYPTION_KEY": "${env:MOLTPAY_ENCRYPTION_KEY}",
+        "MOLTPAY_NETWORK": "devnet"
+      }
+    }
+  }
+}
+```
+
+### Available MCP Tools
+
+| Tool | Description | Parameters |
+|------|-------------|------------|
+| `create_wallet` | Create a new Solana wallet with encrypted storage | none |
+| `get_balance` | Get SOL and token balances for a wallet | `publicKey`, `tokens?` |
+| `send_payment` | Send SOL or SPL tokens to a recipient | `to`, `amount`, `token?`, `memo?` |
+| `verify_payment` | Verify a transaction on the blockchain | `signature`, `expectedRecipient?`, `expectedAmount?` |
+| `get_history` | Get transaction history for a wallet | `publicKey`, `limit?`, `direction?` |
+| `request_airdrop` | Request devnet SOL airdrop (devnet only) | `publicKey`, `amount?` |
+
+### Environment Variables
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `MOLTPAY_ENCRYPTION_KEY` | Yes | 32-byte key for wallet encryption |
+| `MOLTPAY_NETWORK` | No | `devnet` (default) or `mainnet-beta` |
+| `MOLTPAY_RPC_ENDPOINT` | No | Custom Solana RPC endpoint URL |
+
+### Example Usage in Claude
+
+Once configured, you can use MoltPay tools directly in Claude:
+
+```
+Human: Create a new Solana wallet for me
+
+Claude: I'll create a new Solana wallet for you using the MoltPay tools.
+[Uses create_wallet tool]
+
+Your new wallet has been created:
+- Public Key: 7xKXtg2CW...
+- Created at: 2024-01-15T10:30:00Z
+```
+
 ## Security
 
 - All wallet private keys are encrypted with AES-256-GCM
@@ -392,12 +481,13 @@ const result = await client.callTool('send_payment', { to: '...', amount: 1 });
 ```
 moltpay/
 ├── src/
+│   ├── bin/              # CLI entry points (moltpay-mcp)
 │   ├── wallet/           # Wallet management
 │   ├── transaction/      # Transaction building & sending
 │   ├── receipt/          # Payment verification & receipts
 │   ├── security/         # Rate limiting, fraud detection
 │   ├── skills/           # Skills system
-│   ├── mcp/              # MCP client integration
+│   ├── mcp/              # MCP client and server
 │   ├── payments/         # Payment & license management
 │   ├── adapters/
 │   │   ├── langchain/    # LangChain adapter

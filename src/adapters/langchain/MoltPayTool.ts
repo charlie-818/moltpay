@@ -424,6 +424,13 @@ export class MoltPayTool {
   }
 
   /**
+   * Gets the active wallet info (including encrypted key for persistence)
+   */
+  getActiveWallet(): (WalletInfo & { salt: string }) | undefined {
+    return this.activeWallet;
+  }
+
+  /**
    * Gets tool definitions for LangChain
    */
   static getToolDefinitions(): typeof MOLTPAY_TOOL_SCHEMAS {
