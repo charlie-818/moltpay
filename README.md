@@ -48,6 +48,21 @@
 
 ### For Developers
 
+**1. Generate an encryption key:**
+
+```bash
+openssl rand -base64 32
+# Save this key securely!
+```
+
+**2. Set up your environment:**
+
+```bash
+export MOLTPAY_ENCRYPTION_KEY="your-generated-key"
+```
+
+**3. Use the SDK:**
+
 ```typescript
 import { MoltPay } from 'moltpay';
 
@@ -104,15 +119,39 @@ This skill enables AI agents to process Solana payments.
 npm install moltpay
 ```
 
+### Generate Encryption Key
+
+MoltPay requires a 32-byte encryption key to securely store wallet private keys. Generate one using:
+
+```bash
+# Using OpenSSL (recommended)
+openssl rand -base64 32
+
+# Using Node.js
+node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
+
+# Using Python
+python3 -c "import secrets; print(secrets.token_urlsafe(32))"
+```
+
+Save the generated key securely - you'll need it to decrypt your wallets.
+
 ### Environment Setup
 
 ```bash
-# Required
-MOLTPAY_ENCRYPTION_KEY=your-32-byte-encryption-key
+# Required - Generate with: openssl rand -base64 32
+export MOLTPAY_ENCRYPTION_KEY="your-generated-key-here"
 
 # Optional
-MOLTPAY_RPC_ENDPOINT=https://api.devnet.solana.com
-MOLTPAY_RATE_LIMIT=100
+export MOLTPAY_NETWORK="devnet"  # or "mainnet-beta"
+export MOLTPAY_RPC_ENDPOINT="https://api.devnet.solana.com"
+```
+
+Add to your shell profile (`~/.bashrc`, `~/.zshrc`) for persistence:
+
+```bash
+echo 'export MOLTPAY_ENCRYPTION_KEY="your-generated-key-here"' >> ~/.zshrc
+source ~/.zshrc
 ```
 
 ## API Reference
@@ -390,7 +429,14 @@ MOLTPAY_ENCRYPTION_KEY=your-secret-key MOLTPAY_NETWORK=devnet npx moltpay-mcp
 
 ### Claude Desktop Configuration
 
-Add to your `claude_desktop_config.json`:
+**Step 1:** Generate an encryption key:
+
+```bash
+openssl rand -base64 32
+# Example output: K7gNU3sdo+OL0wNhqoVWhr3g6s1xYv72ol/pe/Unols=
+```
+
+**Step 2:** Add to your `claude_desktop_config.json`:
 
 **macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`
 **Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
@@ -402,7 +448,7 @@ Add to your `claude_desktop_config.json`:
       "command": "npx",
       "args": ["moltpay-mcp"],
       "env": {
-        "MOLTPAY_ENCRYPTION_KEY": "your-32-byte-encryption-key",
+        "MOLTPAY_ENCRYPTION_KEY": "K7gNU3sdo+OL0wNhqoVWhr3g6s1xYv72ol/pe/Unols=",
         "MOLTPAY_NETWORK": "devnet"
       }
     }
@@ -410,9 +456,22 @@ Add to your `claude_desktop_config.json`:
 }
 ```
 
+Replace the example key with your generated key. Restart Claude Desktop to apply.
+
 ### Claude Code Configuration
 
-Add to your `.claude/settings.json` or global settings:
+**Step 1:** Generate and export your encryption key:
+
+```bash
+# Generate key
+openssl rand -base64 32
+
+# Add to your shell profile
+echo 'export MOLTPAY_ENCRYPTION_KEY="your-generated-key"' >> ~/.zshrc
+source ~/.zshrc
+```
+
+**Step 2:** Add to your `.claude/settings.json` or global settings:
 
 ```json
 {
@@ -429,6 +488,8 @@ Add to your `.claude/settings.json` or global settings:
 }
 ```
 
+The `${env:MOLTPAY_ENCRYPTION_KEY}` syntax reads from your environment variable.
+
 ### Available MCP Tools
 
 | Tool | Description | Parameters |
@@ -444,7 +505,7 @@ Add to your `.claude/settings.json` or global settings:
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `MOLTPAY_ENCRYPTION_KEY` | Yes | 32-byte key for wallet encryption |
+| `MOLTPAY_ENCRYPTION_KEY` | Yes | 32-byte base64 key for wallet encryption. Generate with `openssl rand -base64 32` |
 | `MOLTPAY_NETWORK` | No | `devnet` (default) or `mainnet-beta` |
 | `MOLTPAY_RPC_ENDPOINT` | No | Custom Solana RPC endpoint URL |
 
@@ -506,8 +567,7 @@ moltpay/
 ├── tests/                # Test files
 ├── index.html            # Frontend entry point
 ├── vite.config.ts        # Vite configuration
-├── railway.json          # Railway deployment config
-└── nixpacks.toml         # Nixpacks build config
+└── netlify.toml          # Netlify deployment config
 ```
 
 ## Development
