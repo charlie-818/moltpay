@@ -2,6 +2,100 @@ import React, { useState } from 'react';
 import { cn } from '../lib/utils';
 import { Copy, Check, Terminal, Apple, Monitor } from 'lucide-react';
 
+// Simple JSON syntax highlighter
+function highlightJson(json: string): React.ReactNode[] {
+  const lines = json.split('\n');
+  return lines.map((line, lineIndex) => {
+    const parts: React.ReactNode[] = [];
+    let remaining = line;
+    let keyIndex = 0;
+
+    // Match patterns in order
+    while (remaining.length > 0) {
+      // Leading whitespace
+      const wsMatch = remaining.match(/^(\s+)/);
+      if (wsMatch) {
+        parts.push(wsMatch[1]);
+        remaining = remaining.slice(wsMatch[1].length);
+        continue;
+      }
+
+      // Key (quoted string followed by colon)
+      const keyMatch = remaining.match(/^("(?:[^"\\]|\\.)*")(\s*:\s*)/);
+      if (keyMatch) {
+        parts.push(
+          <span key={`k-${lineIndex}-${keyIndex++}`} className="text-purple-400">{keyMatch[1]}</span>
+        );
+        parts.push(
+          <span key={`c-${lineIndex}-${keyIndex++}`} className="text-gray-400">{keyMatch[2]}</span>
+        );
+        remaining = remaining.slice(keyMatch[0].length);
+        continue;
+      }
+
+      // String value
+      const strMatch = remaining.match(/^("(?:[^"\\]|\\.)*")/);
+      if (strMatch) {
+        parts.push(
+          <span key={`s-${lineIndex}-${keyIndex++}`} className="text-green-400">{strMatch[1]}</span>
+        );
+        remaining = remaining.slice(strMatch[1].length);
+        continue;
+      }
+
+      // Braces and brackets
+      const braceMatch = remaining.match(/^([{}\[\]])/);
+      if (braceMatch) {
+        parts.push(
+          <span key={`b-${lineIndex}-${keyIndex++}`} className="text-yellow-300">{braceMatch[1]}</span>
+        );
+        remaining = remaining.slice(1);
+        continue;
+      }
+
+      // Comma
+      if (remaining[0] === ',') {
+        parts.push(
+          <span key={`cm-${lineIndex}-${keyIndex++}`} className="text-gray-400">,</span>
+        );
+        remaining = remaining.slice(1);
+        continue;
+      }
+
+      // Numbers
+      const numMatch = remaining.match(/^(-?\d+\.?\d*)/);
+      if (numMatch) {
+        parts.push(
+          <span key={`n-${lineIndex}-${keyIndex++}`} className="text-cyan-400">{numMatch[1]}</span>
+        );
+        remaining = remaining.slice(numMatch[1].length);
+        continue;
+      }
+
+      // Boolean/null
+      const boolMatch = remaining.match(/^(true|false|null)/);
+      if (boolMatch) {
+        parts.push(
+          <span key={`bl-${lineIndex}-${keyIndex++}`} className="text-orange-400">{boolMatch[1]}</span>
+        );
+        remaining = remaining.slice(boolMatch[1].length);
+        continue;
+      }
+
+      // Fallback: single character
+      parts.push(remaining[0]);
+      remaining = remaining.slice(1);
+    }
+
+    return (
+      <React.Fragment key={`line-${lineIndex}`}>
+        {parts}
+        {lineIndex < lines.length - 1 && '\n'}
+      </React.Fragment>
+    );
+  });
+}
+
 const MCP_CONFIG = {
   mcpServers: {
     moltpay: {
@@ -117,8 +211,8 @@ export function MCPInstaller({ className, onCopy }: MCPInstallerProps) {
 
               {/* JSON config */}
               <div className="relative flex-1 min-w-0 flex flex-col">
-                <pre className="flex-1 p-4 bg-gray-900 rounded-lg text-sm text-gray-100 font-mono overflow-x-auto">
-                  {configJson}
+                <pre className="flex-1 p-4 bg-gray-900 rounded-lg text-sm font-mono overflow-x-auto">
+                  <code>{highlightJson(configJson)}</code>
                 </pre>
                 <button
                   onClick={handleCopyConfig}
