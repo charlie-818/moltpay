@@ -1,12 +1,25 @@
 {
   "name": "moltpay",
   "version": "0.1.0",
-  "description": "Solana payment SDK for AI agents - supports OpenClaw, LangChain, and CrewAI",
+  "description": "Solana payment SDK for AI agents - supports OpenClaw, LangChain, CrewAI, and MCP",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
     "moltpay-mcp": "./dist/bin/mcp-server.js"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/charlie-818/moltpay.git"
+  },
+  "homepage": "https://github.com/charlie-818/moltpay#readme",
+  "bugs": {
+    "url": "https://github.com/charlie-818/moltpay/issues"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "build": "tsc",
     "build:ui": "vite build",
