@@ -4,8 +4,11 @@
 [![Node.js](https://img.shields.io/badge/Node.js-%3E%3D18-green.svg)](https://nodejs.org/)
 [![Solana](https://img.shields.io/badge/Solana-Powered-purple.svg)](https://solana.com/)
 [![OpenClaw](https://img.shields.io/badge/OpenClaw-Compatible-orange.svg)](https://openclaw.dev/)
+[![Website](https://img.shields.io/badge/Website-usemoltpay.xyz-red.svg)](https://usemoltpay.xyz)
 
 > A payment SDK enabling AI agents to transact value on Solana with enterprise-grade security and multi-framework support.
+
+**Website:** [usemoltpay.xyz](https://usemoltpay.xyz)
 
 ## Architecture
 
@@ -494,9 +497,17 @@ moltpay/
 │   │   ├── openclaw/     # OpenClaw adapter
 │   │   ├── crewai/       # CrewAI adapter
 │   │   └── api/          # REST API adapter
-│   └── ui/               # React components
+│   └── ui/               # Frontend application
+│       ├── components/   # React components (SkillViewer, MCPInstaller, etc.)
+│       ├── views/        # Page views (LandingPage)
+│       ├── dev/          # Development entry point
+│       └── styles.css    # Tailwind styles
+├── public/               # Static assets (logo, favicon)
 ├── tests/                # Test files
-└── examples/             # Usage examples
+├── index.html            # Frontend entry point
+├── vite.config.ts        # Vite configuration
+├── railway.json          # Railway deployment config
+└── nixpacks.toml         # Nixpacks build config
 ```
 
 ## Development
@@ -511,12 +522,41 @@ npm test
 # Run with coverage
 npm run test:coverage
 
-# Build
+# Build SDK (TypeScript)
 npm run build
 
-# Run in development
-npm run dev
+# Build frontend site
+npm run build:site
+
+# Build everything (SDK + frontend)
+npm run build:all
+
+# Run frontend in development
+npm run dev:ui
+
+# Preview production build
+npm run preview
+
+# Run MCP server in development
+npm run mcp:dev
 ```
+
+## Deployment
+
+The frontend is deployed at [usemoltpay.xyz](https://usemoltpay.xyz).
+
+### Build Output
+
+- `dist/` - Compiled TypeScript SDK
+- `dist/public/` - Static frontend (HTML, CSS, JS, assets)
+
+### Environment Variables
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `MOLTPAY_ENCRYPTION_KEY` | Yes | 32-byte key for wallet encryption |
+| `MOLTPAY_NETWORK` | No | `devnet` (default) or `mainnet-beta` |
+| `MOLTPAY_RPC_ENDPOINT` | No | Custom Solana RPC endpoint URL |
 
 ## License
 
