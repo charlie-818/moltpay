@@ -96,18 +96,36 @@ function highlightJson(json: string): React.ReactNode[] {
   });
 }
 
-const MCP_CONFIG = {
+type NetworkType = 'devnet' | 'mainnet';
+
+const NETWORK_CONFIG = {
+  devnet: {
+    rpcEndpoint: 'https://api.devnet.solana.com',
+    network: 'devnet',
+    label: 'Devnet',
+    description: 'Test network with free SOL'
+  },
+  mainnet: {
+    rpcEndpoint: 'https://api.mainnet-beta.solana.com',
+    network: 'mainnet-beta',
+    label: 'Mainnet',
+    description: 'Live network with real SOL'
+  }
+};
+
+const getMcpConfig = (network: NetworkType) => ({
   mcpServers: {
     moltpay: {
       command: "npx",
       args: ["moltpay-mcp"],
       env: {
         MOLTPAY_ENCRYPTION_KEY: "your-encryption-key-here",
-        MOLTPAY_RPC_ENDPOINT: "https://api.devnet.solana.com"
+        MOLTPAY_NETWORK: NETWORK_CONFIG[network].network,
+        MOLTPAY_RPC_ENDPOINT: NETWORK_CONFIG[network].rpcEndpoint
       }
     }
   }
-};
+});
 
 const CONFIG_PATHS = {
   macOS: '~/Library/Application Support/Claude/claude_desktop_config.json',
@@ -123,8 +141,9 @@ export function MCPInstaller({ className, onCopy }: MCPInstallerProps) {
   const [copiedConfig, setCopiedConfig] = useState(false);
   const [copiedNpx, setCopiedNpx] = useState(false);
   const [activeTab, setActiveTab] = useState<'config' | 'npx'>('config');
+  const [network, setNetwork] = useState<NetworkType>('devnet');
 
-  const configJson = JSON.stringify(MCP_CONFIG, null, 2);
+  const configJson = JSON.stringify(getMcpConfig(network), null, 2);
 
   const handleCopyConfig = async () => {
     try {
@@ -194,6 +213,56 @@ export function MCPInstaller({ className, onCopy }: MCPInstallerProps) {
         {activeTab === 'config' ? (
           <>
             <div className="flex flex-col gap-4 flex-1 min-h-0">
+              {/* Network selector */}
+              <div className="flex-shrink-0">
+                <p className="text-sm font-medium text-gray-700 mb-2">Select network:</p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setNetwork('devnet')}
+                    className={cn(
+                      'flex-1 px-4 py-3 rounded-lg border-2 transition-all text-left',
+                      network === 'devnet'
+                        ? 'border-red-500 bg-red-50'
+                        : 'border-gray-200 hover:border-gray-300'
+                    )}
+                  >
+                    <div className="flex items-center gap-2">
+                      <div className={cn(
+                        'w-3 h-3 rounded-full',
+                        network === 'devnet' ? 'bg-red-500' : 'bg-gray-300'
+                      )} />
+                      <span className="font-medium text-gray-900">Devnet</span>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">Test network with free SOL</p>
+                  </button>
+                  <button
+                    onClick={() => setNetwork('mainnet')}
+                    className={cn(
+                      'flex-1 px-4 py-3 rounded-lg border-2 transition-all text-left',
+                      network === 'mainnet'
+                        ? 'border-green-500 bg-green-50'
+                        : 'border-gray-200 hover:border-gray-300'
+                    )}
+                  >
+                    <div className="flex items-center gap-2">
+                      <div className={cn(
+                        'w-3 h-3 rounded-full',
+                        network === 'mainnet' ? 'bg-green-500' : 'bg-gray-300'
+                      )} />
+                      <span className="font-medium text-gray-900">Mainnet</span>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">Live network with real SOL</p>
+                  </button>
+                </div>
+                {network === 'mainnet' && (
+                  <div className="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                    <p className="text-xs text-amber-800">
+                      <strong>Warning:</strong> Mainnet uses real SOL. Transactions are irreversible and cost real money.
+                    </p>
+                  </div>
+                )}
+              </div>
+
               {/* Config file location - above config text */}
               <div className="flex-shrink-0 p-4 bg-gray-50 rounded-lg border border-gray-200">
                 <p className="text-sm font-medium text-gray-700 mb-2">Config file location:</p>
@@ -275,14 +344,44 @@ export function MCPInstaller({ className, onCopy }: MCPInstallerProps) {
               </button>
             </div>
 
-            <div className="mt-4 p-4 bg-amber-50 border border-amber-200 rounded-lg">
-              <p className="text-sm text-amber-800">
-                <strong>Note:</strong> Set environment variables before running:
+            <div className="mt-4 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+              <p className="text-sm text-gray-700 font-medium mb-2">
+                Set environment variables before running:
               </p>
-              <pre className="mt-2 text-xs text-amber-700 font-mono whitespace-pre">
+              <div className="flex gap-2 mb-3">
+                <button
+                  onClick={() => setNetwork('devnet')}
+                  className={cn(
+                    'px-3 py-1.5 rounded text-xs font-medium transition-all',
+                    network === 'devnet'
+                      ? 'bg-red-500 text-white'
+                      : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+                  )}
+                >
+                  Devnet
+                </button>
+                <button
+                  onClick={() => setNetwork('mainnet')}
+                  className={cn(
+                    'px-3 py-1.5 rounded text-xs font-medium transition-all',
+                    network === 'mainnet'
+                      ? 'bg-green-500 text-white'
+                      : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+                  )}
+                >
+                  Mainnet
+                </button>
+              </div>
+              <pre className="text-xs text-gray-700 font-mono whitespace-pre bg-gray-100 p-3 rounded">
 {`export MOLTPAY_ENCRYPTION_KEY="your-key-here"
-export MOLTPAY_RPC_ENDPOINT="https://api.devnet.solana.com"`}
+export MOLTPAY_NETWORK="${NETWORK_CONFIG[network].network}"
+export MOLTPAY_RPC_ENDPOINT="${NETWORK_CONFIG[network].rpcEndpoint}"`}
               </pre>
+              {network === 'mainnet' && (
+                <p className="mt-2 text-xs text-amber-700">
+                  <strong>Warning:</strong> Mainnet uses real SOL. Transactions are irreversible.
+                </p>
+              )}
             </div>
           </>
         )}
