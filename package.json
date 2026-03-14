@@ -1,7 +1,7 @@
 {
   "name": "moltpay",
   "version": "0.1.0",
-  "description": "Solana payment SDK for AI agents - supports OpenClaw, LangChain, CrewAI, and MCP",
+  "description": "Solana payments infrastructure for autonomous AI agents",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
