@@ -372,7 +372,7 @@ export function MCPInstaller({ className, onCopy }: MCPInstallerProps) {
                   Mainnet
                 </button>
               </div>
-              <pre className="text-xs text-gray-700 font-mono whitespace-pre bg-gray-100 p-3 rounded">
+              <pre className="text-xs text-gray-700 font-mono whitespace-pre-wrap break-all bg-gray-100 p-3 rounded">
 {`export MOLTPAY_ENCRYPTION_KEY="your-key-here"
 export MOLTPAY_NETWORK="${NETWORK_CONFIG[network].network}"
 export MOLTPAY_RPC_ENDPOINT="${NETWORK_CONFIG[network].rpcEndpoint}"`}

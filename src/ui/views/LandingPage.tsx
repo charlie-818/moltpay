@@ -108,7 +108,7 @@ export function LandingPage({ className }: LandingPageProps) {
 
           <div id="install" className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-stretch">
             {/* SKILL.md Viewer - fixed height to match Install MCP card */}
-            <div className="flex flex-col w-full lg:h-[720px] min-h-0">
+            <div className="flex flex-col w-full lg:h-[860px] min-h-0">
               <h2 className="text-lg font-semibold text-gray-900 mb-4 flex-shrink-0">
                 For AI Agents
               </h2>
@@ -118,7 +118,7 @@ export function LandingPage({ className }: LandingPageProps) {
             </div>
 
             {/* MCP Installer - same height as AI agents card */}
-            <div className="flex flex-col w-full lg:h-[720px] min-h-0">
+            <div className="flex flex-col w-full lg:h-[860px] min-h-0">
               <h2 className="text-lg font-semibold text-gray-900 mb-4 flex-shrink-0">
                 Install MCP Server
               </h2>
