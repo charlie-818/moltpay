@@ -239,6 +239,27 @@ permissions:
 This skill has invalid permission formats.
 `;
 
+// Skill with explicit permissions - alias for tests
+export const SKILL_WITH_PERMISSIONS = `---
+name: skill-with-permissions
+description: A skill with explicit permissions defined
+version: 1.0.0
+license: MIT
+permissions:
+  - file_read:/tmp/*
+  - file_write:/tmp/*
+  - network_fetch
+trust-level: verified
+---
+
+## Instructions
+
+This skill has explicit permissions that need to be granted.
+`;
+
+// Paid skill - alias for backward compatibility
+export const PAID_SKILL_MD = PAID_SKILL_ONETIME;
+
 // Helper function to create a valid installed skill
 export function createMockInstalledSkill(overrides: Partial<{
   id: string;

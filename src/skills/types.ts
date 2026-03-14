@@ -193,9 +193,10 @@ export interface McpTool {
 }
 
 export interface McpToolAsSkill extends SkillMetadata {
+  source: 'mcp';
   mcpServerId: string;
   mcpToolName: string;
-  inputSchema: Record<string, unknown>;
+  inputSchema?: Record<string, unknown>;
 }
 
 // ============================================================================

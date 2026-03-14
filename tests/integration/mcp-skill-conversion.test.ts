@@ -26,9 +26,7 @@ describe('MCP Skill Conversion Integration', () => {
     permissionManager = new PermissionManager();
     auditLogger = new AuditLogger({ inMemory: true });
 
-    mcpToolRegistry = new McpToolRegistry({
-      clientManager: mockClientManager,
-    });
+    mcpToolRegistry = new McpToolRegistry(mockClientManager as any);
 
     skillManager = new SkillManager({
       inMemory: true,

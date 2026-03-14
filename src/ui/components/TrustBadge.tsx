@@ -25,8 +25,8 @@ const trustConfig: Record<TrustLevel, {
 }> = {
   system: {
     label: 'System',
-    color: 'text-purple-700',
-    bgColor: 'bg-purple-100',
+    color: 'text-red-700',
+    bgColor: 'bg-red-100',
     Icon: Shield,
   },
   verified: {

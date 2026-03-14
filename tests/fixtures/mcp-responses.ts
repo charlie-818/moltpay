@@ -4,12 +4,12 @@
 
 import { vi } from 'vitest';
 
-// MCP tool list response
+// MCP tool list response (2 tools for integration tests)
 export const MCP_TOOLS_LIST = {
   tools: [
     {
       name: 'read_file',
-      description: 'Read contents of a file',
+      description: 'Read a file from the filesystem',
       inputSchema: {
         type: 'object',
         properties: {
@@ -30,6 +30,13 @@ export const MCP_TOOLS_LIST = {
         required: ['path', 'content'],
       },
     },
+  ],
+};
+
+// Full MCP tool list with all tools
+export const MCP_TOOLS_FULL = {
+  tools: [
+    ...MCP_TOOLS_LIST.tools,
     {
       name: 'fetch_url',
       description: 'Fetch data from a URL',
@@ -64,6 +71,34 @@ export const MCP_TOOLS_LIST = {
           limit: { type: 'number', default: 10 },
         },
         required: ['query'],
+      },
+    },
+  ],
+};
+
+// MCP tools with complex nested schemas
+export const MCP_TOOLS_WITH_COMPLEX_SCHEMAS = {
+  tools: [
+    {
+      name: 'complex_tool',
+      description: 'A tool with complex input schema',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          name: { type: 'string', description: 'Name parameter' },
+          options: {
+            type: 'object',
+            properties: {
+              enabled: { type: 'boolean' },
+              count: { type: 'number' },
+              tags: {
+                type: 'array',
+                items: { type: 'string' },
+              },
+            },
+          },
+        },
+        required: ['name'],
       },
     },
   ],
@@ -220,12 +255,26 @@ export const JSON_RPC_FIXTURES = {
 };
 
 // Mock MCP server configuration
-export function createMockMcpServerConfig(overrides: Partial<{
+export function createMockMcpServerConfig(serverIdOrOverrides?: string | Partial<{
   id: string;
   name: string;
   transport: 'stdio' | 'http' | 'sse';
   trustLevel: 'system' | 'verified' | 'community' | 'untrusted';
-}> = {}) {
+}>) {
+  // Handle string argument for simple server ID
+  if (typeof serverIdOrOverrides === 'string') {
+    return {
+      id: serverIdOrOverrides,
+      name: `${serverIdOrOverrides} MCP Server`,
+      transport: 'stdio' as const,
+      command: 'node',
+      args: ['test-server.js'],
+      trustLevel: 'verified' as const,
+      enabled: true,
+    };
+  }
+
+  const overrides = serverIdOrOverrides || {};
   return {
     id: overrides.id || 'test-server',
     name: overrides.name || 'Test MCP Server',
@@ -245,6 +294,7 @@ export function createMockMcpClient(connected: boolean = false) {
     disconnect: vi.fn().mockResolvedValue(undefined),
     getServerInfo: vi.fn().mockReturnValue(createMockMcpServerConfig()),
     getTools: vi.fn().mockReturnValue(connected ? MCP_TOOLS_LIST.tools : []),
+    listTools: vi.fn().mockResolvedValue(MCP_TOOLS_LIST),
     refreshTools: vi.fn().mockResolvedValue(MCP_TOOLS_LIST.tools),
     getCapabilities: vi.fn().mockReturnValue(connected ? MCP_CAPABILITIES : {}),
     callTool: vi.fn().mockImplementation((name: string) => {

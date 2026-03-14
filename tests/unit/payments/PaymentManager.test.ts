@@ -1,5 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { PaymentManager } from '../../../src/payments/PaymentManager';
+import { LAMPORTS_PER_SOL } from '@solana/web3.js';
+
+// Import fixtures for use in test body (not inside mock factory)
 import {
   createMockConnection,
   createMockKeypair,
@@ -10,27 +13,28 @@ import {
   MOCK_WALLETS,
   TOKEN_MINTS,
 } from '../../fixtures/solana-mocks';
-import { LAMPORTS_PER_SOL } from '@solana/web3.js';
 
 // Mock the solana web3.js module
 vi.mock('@solana/web3.js', async () => {
   const actual = await vi.importActual('@solana/web3.js');
+  const fixtures = await import('../../fixtures/solana-mocks');
   return {
     ...actual,
-    sendAndConfirmTransaction: vi.fn().mockResolvedValue(MOCK_SIGNATURE),
+    sendAndConfirmTransaction: vi.fn().mockResolvedValue(fixtures.MOCK_SIGNATURE),
   };
 });
 
 // Mock spl-token
 vi.mock('@solana/spl-token', async () => {
   const actual = await vi.importActual('@solana/spl-token');
+  const fixtures = await import('../../fixtures/solana-mocks');
   return {
     ...actual,
     getAssociatedTokenAddress: vi.fn().mockResolvedValue({
       toBase58: () => 'AssociatedTokenAddress',
     }),
     getAccount: vi.fn().mockResolvedValue({
-      amount: BigInt(MOCK_TOKEN_BALANCES.usdc),
+      amount: BigInt(fixtures.MOCK_TOKEN_BALANCES.usdc),
     }),
     createTransferInstruction: vi.fn().mockReturnValue({
       keys: [],

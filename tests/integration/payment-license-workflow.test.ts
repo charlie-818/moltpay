@@ -3,18 +3,21 @@ import { PaymentManager } from '../../src/payments/PaymentManager';
 import { LicenseManager } from '../../src/payments/LicenseManager';
 import { SkillManager } from '../../src/skills/SkillManager';
 import { AuditLogger } from '../../src/security/AuditLogger';
-import { createMockConnection, createMockKeypair } from '../fixtures/solana-mocks';
 import { PAID_SKILL_MD } from '../fixtures/skills';
 import { Connection, PublicKey, Keypair, Transaction } from '@solana/web3.js';
 import nacl from 'tweetnacl';
 import bs58 from 'bs58';
 
+// Import fixtures for use in test body (not inside mock factory)
+import { createMockConnection, createMockKeypair } from '../fixtures/solana-mocks';
+
 // Mock Solana modules
 vi.mock('@solana/web3.js', async () => {
   const actual = await vi.importActual('@solana/web3.js');
+  const fixtures = await import('../fixtures/solana-mocks');
   return {
     ...actual,
-    Connection: vi.fn().mockImplementation(() => createMockConnection()),
+    Connection: vi.fn().mockImplementation(() => fixtures.createMockConnection()),
   };
 });
 

@@ -1,222 +1,131 @@
-# MoltPay Skill
+---
+name: moltpay
+description: Solana payment skill for AI agents - create wallets, send SOL, and verify transactions
+version: 0.1.0
+license: MIT
+author: MoltPay
+allowed-tools: Bash Read WebFetch
+tags:
+  - solana
+  - payments
+  - wallet
+  - ai-agents
+  - mcp
+pricing:
+  model: free
+  currency: SOL
+permissions:
+  - wallet_create
+  - wallet_read
+  - wallet_sign
+  - network_fetch:api.mainnet-beta.solana.com
+  - network_fetch:api.devnet.solana.com
+trust-level: verified
+certifications:
+  - AIUC-1
+---
 
-Solana payment processing for AI agents. Send SOL and SPL tokens, verify payments, and manage wallets on the Solana blockchain.
+# MoltPay - Solana Payments for AI Agents
+
+MoltPay enables AI agents to create Solana wallets, check balances, send SOL payments, and verify transactions on-chain.
+
+## Available Tools
+
+### \`create_wallet\`
+Create a new encrypted Solana wallet for the agent.
+
+**Returns:**
+- \`publicKey\`: The wallet's public address
+- \`encrypted\`: Whether the wallet is encrypted at rest
+
+### \`get_balance\`
+Check the SOL balance of a wallet address.
+
+**Parameters:**
+- \`address\` (optional): Wallet address to check. Defaults to agent's wallet.
+
+**Returns:**
+- \`balance\`: Balance in SOL
+- \`lamports\`: Balance in lamports (1 SOL = 1,000,000,000 lamports)
+
+### \`send\`
+Send SOL to a recipient address.
+
+**Parameters:**
+- \`to\`: Recipient wallet address
+- \`amount\`: Amount of SOL to send
+- \`memo\` (optional): Transaction memo
+
+**Returns:**
+- \`signature\`: Transaction signature
+- \`status\`: "confirmed" | "finalized"
+
+### \`verify_payment\`
+Verify that a payment was received.
+
+**Parameters:**
+- \`signature\`: Transaction signature to verify
+- \`expectedAmount\` (optional): Expected amount in SOL
+- \`expectedSender\` (optional): Expected sender address
+
+**Returns:**
+- \`verified\`: boolean
+- \`amount\`: Actual amount transferred
+- \`sender\`: Sender address
+- \`recipient\`: Recipient address
+- \`timestamp\`: Transaction timestamp
+
+### \`get_transaction\`
+Get details of a specific transaction.
+
+**Parameters:**
+- \`signature\`: Transaction signature
+
+**Returns:**
+- Full transaction details including status, amount, parties, and timestamp
+
+## Example Usage
+
+\`\`\`
+User: Create a wallet for payments
+
+Agent: I'll create a new Solana wallet for you.
+[Calls create_wallet]
+
+Wallet created successfully!
+- Public Key: 7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU
+- Network: Devnet
+- Encrypted: Yes
+
+Your wallet is ready to receive SOL. Would you like me to check the balance?
+\`\`\`
+
+\`\`\`
+User: Send 0.5 SOL to 9aE476sH92...
+
+Agent: I'll send 0.5 SOL to that address.
+[Calls send with to="9aE476sH92...", amount=0.5]
+
+Transaction submitted!
+- Amount: 0.5 SOL
+- Recipient: 9aE476sH92...
+- Signature: 5K8d7nR3...
+- Status: Confirmed
+
+View on Solscan: https://solscan.io/tx/5K8d7nR3...
+\`\`\`
+
+## Security
+
+- Private keys are encrypted at rest using your \`MOLTPAY_ENCRYPTION_KEY\`
+- Transactions require explicit agent approval before signing
+- Supports both Devnet (testing) and Mainnet (production)
+- All operations are logged for audit purposes
 
 ## Configuration
 
-```yaml
-name: moltpay
-version: 1.0.0
-description: Solana payment processing for AI agents
-author: MoltPay
-category: finance
-tags:
-  - payments
-  - solana
-  - cryptocurrency
-  - blockchain
-  - web3
+Set these environment variables:
 
-settings:
-  encryption_key:
-    type: string
-    required: true
-    secret: true
-    description: Encryption key for wallet security (min 8 characters)
-
-  rpc_endpoint:
-    type: string
-    required: false
-    default: https://api.devnet.solana.com
-    description: Solana RPC endpoint URL
-
-  network:
-    type: string
-    required: false
-    default: devnet
-    enum: [devnet, mainnet-beta]
-    description: Solana network to use
-```
-
-## Actions
-
-### create_wallet
-Creates a new Solana wallet with encrypted private key storage.
-
-**Parameters:**
-- None required
-
-**Returns:**
-```json
-{
-  "publicKey": "Base58 public key",
-  "encryptedPrivateKey": "Encrypted private key (base64)",
-  "createdAt": 1234567890
-}
-```
-
-### create_hd_wallet
-Creates a new HD wallet with BIP39 mnemonic for key recovery.
-
-**Parameters:**
-- `accountIndex` (number, optional): Account derivation index (default: 0)
-
-**Returns:**
-```json
-{
-  "publicKey": "Base58 public key",
-  "mnemonic": "12-word recovery phrase",
-  "derivationPath": "m/44'/501'/0'/0'"
-}
-```
-
-### get_balance
-Gets the SOL and token balance for a wallet.
-
-**Parameters:**
-- `publicKey` (string, required): Wallet public key
-- `tokens` (array, optional): Token mints to check (e.g., ["USDC", "USDT"])
-
-**Returns:**
-```json
-{
-  "sol": 1.5,
-  "tokens": [
-    { "symbol": "USDC", "amount": 100.0 }
-  ]
-}
-```
-
-### send
-Sends SOL or SPL tokens to a recipient.
-
-**Parameters:**
-- `to` (string, required): Recipient public key
-- `amount` (number, required): Amount to send
-- `token` (string, optional): Token to send (default: "SOL")
-- `memo` (string, optional): Transaction memo
-
-**Returns:**
-```json
-{
-  "signature": "Transaction signature",
-  "status": "confirmed",
-  "timestamp": 1234567890,
-  "receipt": {
-    "receiptId": "RCP-12345678",
-    "amount": 1.5,
-    "token": "SOL"
-  }
-}
-```
-
-### verify_payment
-Verifies a payment was received on-chain.
-
-**Parameters:**
-- `signature` (string, required): Transaction signature to verify
-- `expectedRecipient` (string, optional): Expected recipient address
-- `expectedAmount` (number, optional): Expected amount
-- `expectedToken` (string, optional): Expected token
-
-**Returns:**
-```json
-{
-  "verified": true,
-  "receipt": {
-    "receiptId": "RCP-12345678",
-    "from": "sender address",
-    "to": "recipient address",
-    "amount": 1.5,
-    "token": "SOL",
-    "timestamp": 1234567890
-  }
-}
-```
-
-### get_history
-Gets transaction history for a wallet.
-
-**Parameters:**
-- `publicKey` (string, required): Wallet public key
-- `limit` (number, optional): Max transactions to return (default: 10)
-- `direction` (string, optional): Filter by "sent", "received", or "all"
-
-**Returns:**
-```json
-{
-  "transactions": [
-    {
-      "signature": "...",
-      "from": "...",
-      "to": "...",
-      "amount": 1.5,
-      "token": "SOL",
-      "timestamp": 1234567890,
-      "status": "success"
-    }
-  ]
-}
-```
-
-### request_airdrop
-Requests test SOL on devnet (for testing only).
-
-**Parameters:**
-- `publicKey` (string, required): Wallet public key
-- `amount` (number, optional): Amount in SOL (max 2, default: 1)
-
-**Returns:**
-```json
-{
-  "signature": "Airdrop transaction signature",
-  "amount": 1.0
-}
-```
-
-## Usage Examples
-
-### Creating a wallet and sending payment
-```
-Agent: I'll create a new wallet for you.
-[calls create_wallet]
-
-Agent: Your wallet is ready! Public key: 7xKX...
-To send 0.5 SOL to another wallet:
-[calls send with to="recipient", amount=0.5]
-
-Agent: Payment sent! Transaction signature: 5nT2...
-```
-
-### Verifying a received payment
-```
-Agent: Let me verify that payment.
-[calls verify_payment with signature="5nT2..."]
-
-Agent: Payment verified! Receipt ID: RCP-12345678
-Amount: 1.5 SOL from 8vKX... to 7xKX...
-```
-
-## Security Notes
-
-- Private keys are encrypted with AES-256 before storage
-- Never log or expose private keys or mnemonics
-- Rate limiting is applied to prevent abuse
-- Transaction amounts are monitored for anomalies
-- Currently configured for devnet only
-
-## Error Handling
-
-All actions return errors in this format:
-```json
-{
-  "success": false,
-  "error": "Error description"
-}
-```
-
-Common errors:
-- `INSUFFICIENT_BALANCE`: Not enough SOL/tokens for transaction
-- `INVALID_ADDRESS`: Invalid public key format
-- `TRANSACTION_FAILED`: Transaction rejected by network
-- `RATE_LIMITED`: Too many transactions, try again later
+- \`MOLTPAY_ENCRYPTION_KEY\`: Required. Key for encrypting wallet data
+- \`MOLTPAY_RPC_ENDPOINT\`: Optional. Custom RPC endpoint (defaults to Devnet)
+- \`MOLTPAY_NETWORK\`: Optional. "devnet" | "mainnet-beta" (defaults to "devnet")

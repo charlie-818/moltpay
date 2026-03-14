@@ -89,8 +89,8 @@ export class SkillManager extends EventEmitter {
    */
   async installFromContent(
     content: string,
-    source: SkillSource,
-    sourcePath: string,
+    source: SkillSource = 'local',
+    sourcePath: string = 'inline-content',
     options: InstallOptions = {}
   ): Promise<InstalledSkill> {
     const result = await this.loader.loadFromContent(content, source, sourcePath, options);
@@ -233,6 +233,17 @@ export class SkillManager extends EventEmitter {
 
     this.registry.setEnabled(skillId, false);
     this.emit('skill:disabled', { ...skill, enabled: false });
+  }
+
+  /**
+   * Set skill enabled state
+   */
+  setEnabled(skillId: string, enabled: boolean): void {
+    if (enabled) {
+      this.enable(skillId);
+    } else {
+      this.disable(skillId);
+    }
   }
 
   /**

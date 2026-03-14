@@ -5,7 +5,6 @@ import { SandboxManager } from '../../src/security/SandboxManager';
 import { AuditLogger } from '../../src/security/AuditLogger';
 import { PaymentManager } from '../../src/payments/PaymentManager';
 import { LicenseManager } from '../../src/payments/LicenseManager';
-import { createMockConnection, createMockKeypair } from '../fixtures/solana-mocks';
 import { VALID_SKILL_MD, PAID_SKILL_MD, SKILL_WITH_PERMISSIONS } from '../fixtures/skills';
 import { Connection, Keypair } from '@solana/web3.js';
 import nacl from 'tweetnacl';
@@ -14,6 +13,7 @@ import bs58 from 'bs58';
 // Mock Solana modules
 vi.mock('@solana/web3.js', async () => {
   const actual = await vi.importActual('@solana/web3.js');
+  const { createMockConnection } = await import('../fixtures/solana-mocks');
   return {
     ...actual,
     Connection: vi.fn().mockImplementation(() => createMockConnection()),

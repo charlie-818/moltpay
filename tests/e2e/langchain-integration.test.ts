@@ -4,13 +4,13 @@ import { PermissionManager } from '../../src/security/PermissionManager';
 import { SandboxManager } from '../../src/security/SandboxManager';
 import { AuditLogger } from '../../src/security/AuditLogger';
 import { PaymentManager } from '../../src/payments/PaymentManager';
-import { createMockConnection } from '../fixtures/solana-mocks';
 import { VALID_SKILL_MD } from '../fixtures/skills';
 import { Connection, Keypair } from '@solana/web3.js';
 
 // Mock Solana modules
 vi.mock('@solana/web3.js', async () => {
   const actual = await vi.importActual('@solana/web3.js');
+  const { createMockConnection } = await import('../fixtures/solana-mocks');
   return {
     ...actual,
     Connection: vi.fn().mockImplementation(() => createMockConnection()),

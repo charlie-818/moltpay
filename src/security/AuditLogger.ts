@@ -324,9 +324,10 @@ export class AuditLogger {
 
     sql += ' ORDER BY timestamp DESC';
 
-    if (query.limit) {
+    // OFFSET requires LIMIT in SQLite
+    if (query.limit || query.offset) {
       sql += ' LIMIT @limit';
-      params.limit = query.limit;
+      params.limit = query.limit || -1; // -1 means no limit in SQLite
     }
 
     if (query.offset) {

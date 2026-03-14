@@ -1,3 +1,2 @@
-export * from './InstalledSkills';
-export * from './SkillMarketplace';
+export * from './LandingPage';
 export * from './DeployGuide';

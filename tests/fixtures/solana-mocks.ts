@@ -237,31 +237,13 @@ export function createPaymentVerificationResponse(options: {
 
 /**
  * Setup Solana module mocks
+ * NOTE: Due to vi.mock hoisting, this should be called at module level, not inside functions.
+ * The test files should use vi.mock directly with inline factories to avoid hoisting issues.
  */
 export function setupSolanaMocks() {
-  vi.mock('@solana/web3.js', async () => {
-    const actual = await vi.importActual('@solana/web3.js');
-    return {
-      ...actual,
-      Connection: vi.fn().mockImplementation(() => createMockConnection()),
-      sendAndConfirmTransaction: mockSendAndConfirmTransaction,
-      PublicKey: vi.fn().mockImplementation((key: string) => createMockPublicKey(key)),
-      Keypair: {
-        generate: vi.fn().mockReturnValue(createMockKeypair()),
-        fromSecretKey: vi.fn().mockReturnValue(createMockKeypair()),
-      },
-    };
-  });
-
-  vi.mock('@solana/spl-token', async () => {
-    const actual = await vi.importActual('@solana/spl-token');
-    return {
-      ...actual,
-      getAssociatedTokenAddress: mockGetAssociatedTokenAddress,
-      getAccount: mockGetAccount,
-      createTransferInstruction: mockCreateTransferInstruction,
-    };
-  });
+  // This function is kept for backwards compatibility but the mocks should be
+  // defined directly in test files to avoid hoisting issues.
+  // See individual test files for proper mock setup.
 }
 
 /**
