@@ -22,8 +22,12 @@
   ],
   "scripts": {
     "build": "tsc",
-    "build:ui": "vite build",
+    "build:ui": "BUILD_LIB=true vite build",
+    "build:site": "vite build",
+    "build:all": "npm run build && npm run build:site",
     "dev:ui": "vite",
+    "preview": "vite preview",
+    "start": "npx serve dist/public -l $PORT",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
